@@ -9,7 +9,7 @@ import os from 'node:os';
 import path from 'node:path';
 
 const root = path.resolve(import.meta.dirname, '..');
-process.env.DSH_HOME = fs.mkdtempSync(path.join(os.tmpdir(), 'dsh-token-total-'));
+process.env.DSH_HOME = fs.mkdtempSync(path.join(os.tmpdir(), 'dsh-token-alltime-'));
 
 const routes = [];
 const ctx = {
@@ -21,7 +21,7 @@ assert.equal(typeof mod.apply, 'function', 'apply must be exported');
 assert.deepEqual(mod.inject, ['webServer'], 'inject must name the webServer service');
 mod.apply(ctx);
 assert.equal(routes.length, 1, 'exactly one route must be registered');
-assert.equal(routes[0].path, '/api/dsh-token-total/overview');
+assert.equal(routes[0].path, '/api/dsh-token-alltime/overview');
 assert.equal(routes[0].kind, 'exact');
 
 const server = http.createServer((req, res) => {
@@ -31,7 +31,7 @@ const server = http.createServer((req, res) => {
 });
 await new Promise((ok) => server.listen(0, '127.0.0.1', ok));
 
-const url = 'http://127.0.0.1:' + server.address().port + '/api/dsh-token-total/overview';
+const url = 'http://127.0.0.1:' + server.address().port + '/api/dsh-token-alltime/overview';
 try {
   const res = await fetch(url);
   assert.equal(res.status, 200);
@@ -76,7 +76,7 @@ const bundle = fs.readFileSync(path.join(root, 'lib/client.js'), 'utf8');
 let captured;
 globalThis.window = { __ModuleLoader__: { load: (spec) => { captured = spec; } } };
 new Function('window', bundle)(globalThis.window);
-assert.equal(captured.id, 'dsh-token-total');
+assert.equal(captured.id, 'dsh-token-alltime');
 const clientExports = captured.factory(() => { throw new Error('client must not require modules'); });
 assert.equal(typeof clientExports.apply, 'function', 'client apply must be exported');
 assert.deepEqual(clientExports.inject, []);

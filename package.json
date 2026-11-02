@@ -1,5 +1,5 @@
 {
-  "name": "dsh-token-total",
+  "name": "dsh-token-alltime",
   "version": "0.1.0",
   "description": "DSH 右侧悬浮卡片：统计从首次调用 API 至今的总 token 用量（平台账单导入 + 实时账本增量）。",
   "keywords": [
