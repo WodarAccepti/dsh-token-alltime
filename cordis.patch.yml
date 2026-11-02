@@ -1,0 +1,5 @@
+# dsh-token-total: mount the host route + client card when this package is
+# registered as a DeepSeek Harness profile bundle.
+- insert:
+    - id: token-total
+      name: "dsh-token-total"
