@@ -1,31 +1,38 @@
-name: Publish
+name: Release
 
-# 由 tag 触发：git tag v0.1.1 && git push origin v0.1.1
-# 需要仓库 Secrets 里的 NPM_TOKEN（Automation 类型）。
 on:
   push:
     tags: ['v*']
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
-  publish:
-    name: publish to npm
+  release:
+    name: attach release artifacts
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-          registry-url: https://registry.npmjs.org
       - name: Run smoke test
         run: node tests/smoke.mjs
       - name: Check tag matches package version
+        if: startsWith(github.ref, 'refs/tags/')
         run: |
           node -e "const v=require('./package.json').version, t=process.env.GITHUB_REF_NAME.replace(/^v/,''); if (v!==t) throw new Error('tag ' + t + ' !== package version ' + v)"
-      - name: Publish
-        run: npm publish --access public
+      - name: Attach artifacts to the GitHub release
+        if: startsWith(github.ref, 'refs/tags/')
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          shopt -s nullglob
+          files=(release/*.tgz release/*.zip release/SHA256SUMS)
+          if [ ${#files[@]} -eq 0 ]; then
+            echo "::notice::release/ 里还没有产物：先在本机跑 node tools/pack-release.mjs 并把 release/ 提交上来"
+            exit 0
+          fi
+          gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1 || gh release create "$GITHUB_REF_NAME" --title "$GITHUB_REF_NAME" --generate-notes
+          gh release upload "$GITHUB_REF_NAME" "${files[@]}" --clobber
