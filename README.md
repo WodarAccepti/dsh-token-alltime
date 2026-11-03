@@ -2,7 +2,7 @@
 
 > 仓库名是 `dsh-token-total`，包名/模块名是 `dsh-token-alltime`：`dsh-token-total` 这个 npm 包名已被别人的同名项目占用（`GaoHu1997/dsh-token-total`），改名以免装错。
 
-DSH（DeepSeek Harness）Web 插件：在界面右缘挂一枚 `Σ TOKEN` 小药丸，显示**从第一次调用 API 至今的累计 token 总量**，点击展开明细（平台历史 / 导出后新增 / 缓存命中率 / 按模型 / 按活跃日柱状图）。
+DSH（DeepSeek Harness）Web 插件：在界面右缘挂一枚 `Σ TOKEN` 小药丸，显示**从第一次调用 API 至今的累计 token 总量**，点击展开明细（平台历史 / 调用花费 / 今日使用 / 账本覆盖 / 缓存命中率 / 按模型 / 按活跃日柱状图）。面板左缘停在药丸左侧，不会盖住药丸。
 
 ## 它解决什么问题
 
@@ -23,7 +23,8 @@ DSH 里能看到的 token 数字有三个口径，都各有缺口：
 ## 数据口径
 
 - **平台历史**：`tools/build-data.mjs` 把你的 `amount-*.csv` / `cost-*.csv` 去重、按天按模型聚合后写进 `lib/data.json`。
-- **此后新增（实时账本）**：主机侧每次请求现读 `usage-ledger.json`，减去导入时记下的基线。单位就是 **token**（未缓存输入 + 缓存读 + 缓存写 + 输出）。
+- **今日使用**：账本里"今天"那一格（按本地日历日）的 token 合计，随每次请求实时上涨。它**不参与总量计算**，只是当天进度的读数；今天若正好是导入日，导出时刻之前的部分已经在平台历史里，两行会有重叠（总量不重复计）。
+- **基线增量**：主机侧每次请求现读 `usage-ledger.json`，减去导入时记下的基线——**总 token 用的是这个值**（`sinceExport`），面板不再单列。单位就是 **token**（未缓存输入 + 缓存读 + 缓存写 + 输出）。
 - **缓存命中率**：`缓存读 / (缓存读 + 未缓存输入)`，平台部分与账本部分一起算。
 - `model` 为空的行是工具检索等非 token 计费（`tool-search`），只累进 `otherCostCny`，不进 token。
 
@@ -77,12 +78,12 @@ node tools/build-data.mjs <解压目录>
 | --- | --- | --- |
 | GET | `/api/dsh-token-alltime/overview` | 全量统计文档（仅回环地址可读，非回环返回 403） |
 
-返回字段：`total`、`sinceExport`、`imported`、`cacheHitRate`、`platform.{range,tokens,calls,costCny,days,models}`、`ledger.{from,to,tokens,days,models}`、`baseline`。
+返回字段：`total`、`sinceExport`、`today.{day,tokens,calls}`、`imported`、`cacheHitRate`、`platform.{range,tokens,calls,costCny,days,models}`、`ledger.{from,to,tokens,days,models}`、`baseline`。
 未导入时上述数值全部为 `0`，`ledger` 与 `cacheHitRate` 为 `null`。
 
 ## 限制
 
-- 基线是**导出时刻**的快照。导出到导入之间若又产生调用，这部分会计入"此后新增"，不会双计；但如果平台导出的覆盖窗口晚于你导入的账本快照，理论上有几分钟的重叠，量级可忽略。
+- 基线是**导出时刻**的快照。导出到导入之间若又产生调用，这部分会计入增量（总 token），不会双计；"今日使用"那一行则会把它和平台历史里同一天的部分同时显示出来；但如果平台导出的覆盖窗口晚于你导入的账本快照，理论上有几分钟的重叠，量级可忽略。
 - 只统计 `provider/model` 前缀为 `deepseek` 的 token 行；其它供应商需要改 `tools/build-data.mjs` 的过滤条件。
 - `/api/dsh-token-alltime/overview` 不含任何凭据，但仍是个人用量数据，所以只对回环开放。
 

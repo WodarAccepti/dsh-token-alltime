@@ -59,8 +59,27 @@ try {
     assert.equal(fresh.sinceExport, 0, 'fresh install must not fold the local ledger in');
     assert.equal(fresh.ledger, null, 'fresh install exposes no ledger breakdown');
     assert.equal(fresh.cacheHitRate, null, 'fresh install has no hit rate');
+    assert.equal(fresh.today.tokens, 0, 'fresh install shows no usage today');
   } else {
     assert.ok(fresh.total > 0, 'an imported install reports its own numbers');
+  }
+
+  // "今日使用" must read the ledger's today bucket, never the whole ledger.
+  const d = new Date();
+  const pad = (n) => String(n).padStart(2, '0');
+  const todayKey = d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+  fs.writeFileSync(
+    path.join(ledgerDir, 'usage-ledger.json'),
+    JSON.stringify({ days: { [todayKey]: { deepseek: { chat: { inputTokens: 10, cacheReadTokens: 90, outputTokens: 0, calls: 1, cost: 0 } } } } }),
+  );
+  const live = await (await fetch(url)).json();
+  if (backed) {
+    assert.equal(live.today.day, todayKey, 'today must be the local calendar day');
+    assert.equal(live.today.tokens, 100, "today must fold only today's ledger bucket");
+    assert.equal(live.today.calls, 1, "today must carry today's call count");
+  } else {
+    assert.equal(live.today.day, null, 'fresh install names no day');
+    assert.equal(live.today.tokens, 0, 'fresh install shows no usage today');
   }
 
   assert.equal(doc.imported, backed, 'imported flag must follow lib/data.json');
