@@ -103,16 +103,23 @@ export function importUsage(inputs) {
   const ledgerFile = path.join(process.env.DSH_HOME || path.join(os.homedir(), '.dsh'), 'dsh-usage', 'usage-ledger.json');
   let ledgerBaselineTokens = 0;
   let ledgerBaselineCalls = 0;
+  let ledgerBaselineDays = null;
   try {
     const ledger = JSON.parse(fs.readFileSync(ledgerFile, 'utf8'));
-    for (const providers of Object.values(ledger.days || {})) {
+    const days = {};
+    for (const [day, providers] of Object.entries(ledger.days || {})) {
+      let dayTokens = 0;
       for (const models of Object.values(providers)) {
         for (const v of Object.values(models)) {
-          ledgerBaselineTokens += (v.inputTokens || 0) + (v.cacheReadTokens || 0) + (v.cacheWriteTokens || 0) + (v.outputTokens || 0) + (v.reasoningTokens || 0);
+          const tokens = (v.inputTokens || 0) + (v.cacheReadTokens || 0) + (v.cacheWriteTokens || 0) + (v.outputTokens || 0) + (v.reasoningTokens || 0);
+          ledgerBaselineTokens += tokens;
           ledgerBaselineCalls += v.calls || 0;
+          dayTokens += tokens;
         }
       }
+      days[day] = dayTokens;
     }
+    ledgerBaselineDays = days;
   } catch {
     console.warn('warning: no usage ledger at ' + ledgerFile + '; baseline recorded as 0');
   }
@@ -127,6 +134,7 @@ export function importUsage(inputs) {
     platformModels: [...byModel.values()].map((m) => ({ ...m, cost: Number(m.cost.toFixed(2)) })),
     ledgerBaselineTokens,
     ledgerBaselineCalls,
+    ledgerBaselineDays,
     otherCostCny: Number(otherCostCny.toFixed(4)),
   };
 }

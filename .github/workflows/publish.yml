@@ -1,6 +1,6 @@
 name: Release
 
-# 由 tag 触发：git tag v0.1.1 && git push origin v0.1.1
+# 由 tag 触发：git tag v1.0.0 && git push origin v1.0.0
 # 不发布到 npm：默认只用 GitHub Release 分发。要发 npm 就先配 NPM_TOKEN
 # 再把 npm publish 步骤加回来（包名 dsh-token-alltime 在 npm 上是空闲的，见 README「发版」）。
 # 这里只把仓库里的 release/*.tgz、release/*-source.zip、SHA256SUMS 挂到 GitHub Release。

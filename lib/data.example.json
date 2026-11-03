@@ -11,5 +11,6 @@
   "platformModels": [],
   "ledgerBaselineTokens": 0,
   "ledgerBaselineCalls": 0,
+  "ledgerBaselineDays": null,
   "otherCostCny": 0
 }

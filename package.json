@@ -1,7 +1,7 @@
 {
   "name": "dsh-token-alltime",
-  "version": "0.1.1",
-  "description": "DSH 右侧悬浮卡片：统计从首次调用 API 至今的总 token 用量（平台账单导入 + 实时账本增量）。",
+  "version": "1.0.0",
+  "description": "DSH 右侧悬浮卡片：历史（至昨日）+ 今日的 token 总量，按模型与最近 15 个使用日实时统计（平台账单导入 + 实时账本）。",
   "keywords": [
     "deepseek",
     "deepseek-harness",

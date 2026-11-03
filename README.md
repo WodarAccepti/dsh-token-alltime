@@ -2,7 +2,7 @@
 
 > 仓库名是 `dsh-token-total`，包名/模块名是 `dsh-token-alltime`：`dsh-token-total` 这个 npm 包名已被别人的同名项目占用（`GaoHu1997/dsh-token-total`），改名以免装错。
 
-DSH（DeepSeek Harness）Web 插件：在界面右缘挂一枚 `Σ TOKEN` 小药丸，显示**从第一次调用 API 至今的累计 token 总量**，点击展开明细（平台历史 / 调用花费 / 今日使用 / 账本覆盖 / 缓存命中率 / 按模型 / 按活跃日柱状图）。面板左缘停在药丸左侧，不会盖住药丸。
+DSH（DeepSeek Harness）Web 插件：在界面右缘挂一枚 `TOKEN` 小药丸，显示**历史（至昨日）+ 今日**的 token 总量，点击展开明细（历史 / 调用花费 / 今日使用 / 今日缓存命中率 / 账本 / 按模型 / 最近 15 个使用日柱状图）。药丸与模型的概数用 `m` / `k`（与千分位分组同一套十进制单位），精确值在悬浮提示里。面板左缘停在药丸左侧，不会盖住药丸；明细每 5 分钟刷新一次，打开面板时若缓存超过 30 秒会立刻补拉一次。
 
 ## 它解决什么问题
 
@@ -17,15 +17,21 @@ DSH 里能看到的 token 数字有三个口径，都各有缺口：
 本插件把三者接起来：**用平台 CSV 打一个基线，之后用实时账本持续累加**，所以数字既对得上账单，又会自己往上长，不需要反复导出。
 
 ```
-总 token = 平台历史 token（导入时） + max(0, 当前账本 token − 导入时账本 token)
+总 token = 历史（至昨日 24:00） + 今日使用
 ```
+
+按本地日历日切分：账单覆盖的日期用账单数，账单之后的日子用账本新增；导出当天账单只记到导出那一刻，剩下的用账本补齐。换日之后今天的数据自动并入历史，两行永远相加等于总数。
 
 ## 数据口径
 
-- **平台历史**：`tools/build-data.mjs` 把你的 `amount-*.csv` / `cost-*.csv` 去重、按天按模型聚合后写进 `lib/data.json`。
-- **今日使用**：账本里"今天"那一格（按本地日历日）的 token 合计，随每次请求实时上涨。它**不参与总量计算**，只是当天进度的读数；今天若正好是导入日，导出时刻之前的部分已经在平台历史里，两行会有重叠（总量不重复计）。
-- **基线增量**：主机侧每次请求现读 `usage-ledger.json`，减去导入时记下的基线——**总 token 用的是这个值**（`sinceExport`），面板不再单列。单位就是 **token**（未缓存输入 + 缓存读 + 缓存写 + 输出）。
-- **缓存命中率**：`缓存读 / (缓存读 + 未缓存输入)`，平台部分与账本部分一起算。
+- **平台账单**：`tools/build-data.mjs` 把你的 `amount-*.csv` / `cost-*.csv` 去重、按天按模型聚合后写进 `lib/data.json`（静态快照）。
+- **历史（至昨日）**：`today` 之前的每一天 = 平台账单当天 token（`platformDays`）+ 导入之后账本在该天的新增；导出当天用"账单数 + 账本当天剩余"补齐。单位是 **token**（缓存读 + 未缓存输入 + 缓存写 + 输出 + 推理）。
+- **今日使用**：账本里"今天"那一格（本地 0:00 分界）的 token 合计，随每次请求实时上涨。它和历史严格互补，两者相加就是总数。
+- **按模型**：账单里的模型分布 + 账本按模型的增量，实时；各模型相加等于总数。
+- **按天柱状图**：只保留最近 **15 个有使用记录的日历日**（零用量日自动跳过）。左端标签是这 15 天里最早那天的真实日期，右端是今天（今天没用就写最近一个使用日），每根柱子悬浮显示完整日期与当日用量。
+- **调用 / 花费**：账单次数与金额 + 账本在新日期的增量，实时；导出当天的增量按当天 token 占比折算，金额四舍五入到分。
+- **账本**：`usage-ledger.json` 覆盖的起止日期，每次刷新重读，随当天用量实时推进。
+- **今日缓存命中率**：`缓存读 / (缓存读 + 未缓存输入)`，只算账本里"今天"那一格，不回溯历史（历史那部分要逐日重算，代价大且没人看）。今天还没调用时显示 `—`。
 - `model` 为空的行是工具检索等非 token 计费（`tool-search`），只累进 `otherCostCny`，不进 token。
 
 ## 安装
@@ -70,7 +76,7 @@ node tools/build-data.mjs <解压目录>
 
 `lib/data.json` 含你的真实账单数据，已加进 `.gitignore`，不要提交。仓库里只有零值模板 `lib/data.example.json`。
 
-**全新安装（还没有 `lib/data.json`）时，接口与药丸一律返回 0**：`imported: false`、`total: 0`、`sinceExport: 0`、`ledger: null`、`cacheHitRate: null`，面板只提示去导入。本机 `dsh-usage` 账本的历史不会被算进来，导入自己的 CSV 之后才开始显示数字。
+**全新安装（还没有 `lib/data.json`）时，接口与药丸一律返回 0**：`imported: false`、`total: 0`、`history: 0`、`calls: 0`、`costCny: 0`、`sinceExport: 0`、`models: []`、`days: []`、`ledger: null`、`today.hitRate: null`，面板只提示去导入。本机 `dsh-usage` 账本的历史不会被算进来，导入自己的 CSV 之后才开始显示数字。
 
 ## 接口
 
@@ -78,12 +84,14 @@ node tools/build-data.mjs <解压目录>
 | --- | --- | --- |
 | GET | `/api/dsh-token-alltime/overview` | 全量统计文档（仅回环地址可读，非回环返回 403） |
 
-返回字段：`total`、`sinceExport`、`today.{day,tokens,calls}`、`imported`、`cacheHitRate`、`platform.{range,tokens,calls,costCny,days,models}`、`ledger.{from,to,tokens,days,models}`、`baseline`。
-未导入时上述数值全部为 `0`，`ledger` 与 `cacheHitRate` 为 `null`。
+返回字段：`total`、`history`、`calls`、`costCny`、`today.{day,tokens,calls,hitRate}`、`sinceExport`、`imported`、`range`、`models[{model,tokens}]`、`days[{day,tokens}]`、`platform.{range,tokens,calls,costCny,days,models}`（账单快照）、`ledger.{from,to,tokens,calls}`、`baseline.{tokens,calls,generatedAt}`。
+未导入时上述数值全部为 `0`，`models` / `days` 为 `[]`，`ledger` 与 `today.hitRate` 为 `null`。
+环境变量 `DSH_TOKEN_ALLTIME_DATA` 可以让主机侧去读别处的 `data.json`（测试用）。
 
 ## 限制
 
-- 基线是**导出时刻**的快照。导出到导入之间若又产生调用，这部分会计入增量（总 token），不会双计；"今日使用"那一行则会把它和平台历史里同一天的部分同时显示出来；但如果平台导出的覆盖窗口晚于你导入的账本快照，理论上有几分钟的重叠，量级可忽略。
+- 基线是**导出时刻**的快照。导出当天账单只记到那一刻，插件用账本把当天剩余的部分补上，所以不会双计；但平台窗口若晚于账本快照，理论上有几分钟的重叠，量级可忽略。
+- 账单覆盖不到的日子（导出之后）只有账本里的 DSH 用量，网页端 / 其它客户端的用量要等下次导出才会补进来。
 - 只统计 `provider/model` 前缀为 `deepseek` 的 token 行；其它供应商需要改 `tools/build-data.mjs` 的过滤条件。
 - `/api/dsh-token-alltime/overview` 不含任何凭据，但仍是个人用量数据，所以只对回环开放。
 
@@ -101,7 +109,7 @@ node tools/pack-release.mjs   # 产出 release/*.tgz、源码 zip 与 SHA256SUMS
 ## 发版
 
 1. 在本机跑 `node tools/pack-release.mjs`（Windows 自带 bsdtar 即可；Linux 的 GNU tar 不支持 `-a` 写 zip，需改用 bsdtar），把 `release/` 提交上来。
-2. 打 tag 推送：`git tag v0.1.0 && git push origin v0.1.0`。`.github/workflows/publish.yml` 会跑 smoke、校验 tag 与 `package.json` 版本一致，然后把 `release/` 里的产物挂到 GitHub Release。
+2. 打 tag 推送：`git tag v1.0.0 && git push origin v1.0.0`。`.github/workflows/publish.yml` 会跑 smoke、校验 tag 与 `package.json` 版本一致，然后把 `release/` 里的产物挂到 GitHub Release。
 
 **关于 npm**：本项目默认不上 npm，只用 GitHub Release 分发 tgz（装插件按上面「安装」走本地目录或解压 tgz 到插件目录）。`dsh-token-alltime` 这个名字目前在 npm 上是空闲的；哪天要发布，先在仓库 Secrets 里加 `NPM_TOKEN`，再把 `npm publish --access public` 步骤加回 `publish.yml` 即可。
 
