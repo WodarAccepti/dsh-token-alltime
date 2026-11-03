@@ -1,6 +1,6 @@
 # dsh-token-alltime
 
-> 仓库名是 `dsh-token-total`，包名/模块名是 `dsh-token-alltime`：`dsh-token-total` 这个 npm 包名已被别人的同名项目占用（`GaoHu1997/dsh-token-total`），改名以免装错。
+> 仓库、包名、插件 id 统一为 `dsh-token-alltime`。这个 npm 包名原叫 `dsh-token-total`，已被别人的同名项目占用（`GaoHu1997/dsh-token-total`），改名以免装错。
 
 DSH（DeepSeek Harness）Web 插件：在界面右缘挂一枚 `TOKEN` 小药丸，显示**历史（至昨日）+ 今日**的 token 总量，点击展开明细（历史 / 调用花费 / 今日使用 / 今日缓存命中率 / 账本 / 按模型 / 最近 15 个使用日柱状图）。药丸与模型的概数用 `m` / `k`（与千分位分组同一套十进制单位），精确值在悬浮提示里。面板左缘停在药丸左侧，不会盖住药丸；明细每 5 分钟刷新一次，打开面板时若缓存超过 30 秒会立刻补拉一次。
 
@@ -49,7 +49,7 @@ Copy-Item -Path ".\*" -Destination \$dst -Recurse -Force
 Add-Content -Path "\$prof\cordis.patch.yml" -Value @(
   "# dsh-token-alltime: all-time token total",
   "- insert:",
-  "    - id: token-total",
+  "    - id: token-alltime",
   "      name: ""dsh-token-alltime"""
 )
 

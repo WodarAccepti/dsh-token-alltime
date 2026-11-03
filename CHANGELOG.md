@@ -17,6 +17,7 @@
 - 主机侧：修正账本合计漏算缓存写与推理 token 的问题（原来只用缓存读 + 未缓存输入 + 输出）。
 - 主机侧：新增 `DSH_TOKEN_ALLTIME_DATA` 环境变量，可指向别处的 `data.json`。
 - 工具：`build-data.mjs` 新增 `ledgerBaselineDays`（按天账本快照），重导入时导出当天的拆分更准；旧版 `data.json` 仍按天回放账本推导，向后兼容。
+- 命名：仓库更名为 `dsh-token-alltime`，插件 id `token-total` → `token-alltime`，`package.json` 的仓库 / bugs / homepage、LICENSE、README 与打包文件名同步改口。
 - 测试：冒烟测试覆盖"历史 + 今日 = 总数"、"各模型相加 = 总数"、导出当天补齐、15 个使用日上限、今日命中率不吸收历史用量。
 
 ## 0.1.1 — 2026-11-02
@@ -34,7 +35,7 @@
 
 首个公开版本。
 
-- 包名：`dsh-token-total` → `dsh-token-alltime`（原名在 npm 上已被他人占用），插件 id 仍是 `token-total`，接口前缀同步改为 `/api/dsh-token-alltime`。
+- 包名：`dsh-token-total` → `dsh-token-alltime`（原名在 npm 上已被他人占用），接口前缀同步改为 `/api/dsh-token-alltime`（插件 id 在 1.0.0 一并改为 `token-alltime`）。
 - 主机侧：新增 `GET /api/dsh-token-alltime/overview`（仅回环可读），返回平台基线 + 实时账本增量合并后的全量统计。
 - 主机侧：`lib/data.json` 缺失（或未导入）时接口一律返回 **0**：`imported:false`、`total:0`、`sinceExport:0`、`ledger:null`、`cacheHitRate:null`，不会把本机 `dsh-usage` 账本的历史算进去，等用户导入自己的账单。
 - 浏览器侧：右缘 `Σ TOKEN` 药丸 + 展开面板（总计、平台历史、导出后新增、账本覆盖、缓存命中率、按模型、按活跃日柱状图），60 秒自刷新，Esc 关闭。

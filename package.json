@@ -38,12 +38,12 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/WodarAccepti/dsh-token-total.git"
+    "url": "git+https://github.com/WodarAccepti/dsh-token-alltime.git"
   },
   "bugs": {
-    "url": "https://github.com/WodarAccepti/dsh-token-total/issues"
+    "url": "https://github.com/WodarAccepti/dsh-token-alltime/issues"
   },
-  "homepage": "https://github.com/WodarAccepti/dsh-token-total#readme",
+  "homepage": "https://github.com/WodarAccepti/dsh-token-alltime#readme",
   "dsh": {
     "bundle": {
       "patch": "./cordis.patch.yml"
