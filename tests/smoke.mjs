@@ -140,6 +140,40 @@ try {
   const rate = await read();
   assert.equal(rate.today.tokens, 400, "today's tokens include the uncached input");
   assert.equal(rate.today.hitRate, 0.75, "the hit rate ignores every earlier day");
+
+  // 5) The route handler contains every failure it can meet: a client that
+  //    already went away, a socket that throws on write, an unreadable bill.
+  //    A throw escaping a route handler is a host crash, not a 500.
+  const route = routes[0];
+  const req = () => ({ socket: { remoteAddress: '127.0.0.1' }, on() {} });
+
+  const dead = {
+    writableEnded: true,
+    on() {},
+    writeHead() { throw new Error('must not write'); },
+    end() { throw new Error('must not end'); },
+    destroy() { throw new Error('must not destroy'); },
+  };
+  assert.doesNotThrow(() => route.handler(req(), dead), 'a finished response is left alone');
+
+  const broken = {
+    destroyed: false,
+    writableEnded: false,
+    on() {},
+    writeHead() { throw new Error('ECONNRESET'); },
+    end() { throw new Error('must not end'); },
+    destroy() { broken.destroyed = true; },
+  };
+  assert.doesNotThrow(() => route.handler(req(), broken), 'a throwing socket never escapes the handler');
+  assert.equal(broken.destroyed, true, 'a throwing socket is destroyed instead');
+
+  fs.writeFileSync(dataFile, JSON.stringify({ platformRange: [D2, D1], platformTotalTokens: 5, platformDays: 'nope' }));
+  const unreadable = await fetch(url);
+  assert.equal(unreadable.status, 500, 'a bill the merge cannot read answers 500');
+  assert.equal((await unreadable.json()).ok, false, 'the 500 explains itself');
+
+  fs.writeFileSync(dataFile, '{ not json');
+  assert.equal((await read()).imported, false, 'a corrupt data.json reads as no import');
 } finally {
   server.close();
 }
@@ -154,9 +188,16 @@ assert.equal(typeof clientExports.apply, 'function', 'client apply must be expor
 assert.deepEqual(clientExports.inject, []);
 assert.ok(!bundle.includes('Σ'), 'the pill caption no longer carries a sigma');
 assert.ok(bundle.includes('POLL_MS = 300000'), 'the panel polls every 5 minutes');
+assert.ok(bundle.includes('dock.dataset.show = "0"'), 'the pill starts collapsed behind the edge arrow');
+assert.ok(bundle.includes('"◀"'), 'the collapsed state is marked by an arrow');
+assert.ok(bundle.includes('pointerenter'), 'hovering pulls the pill out');
+
+// Mounting where the host offers no web server must stay dormant, not throw.
+assert.doesNotThrow(() => mod.apply({}), 'apply without a context stays dormant');
+assert.doesNotThrow(() => mod.apply({ webServer: {} }), 'apply without a register() stays dormant');
 
 const pkg = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
-for (const required of ['lib/index.js', 'lib/client.js', 'cordis.patch.yml']) {
+for (const required of ['lib/index.js', 'lib/client.js', 'cordis.patch.yml', 'tools/doctor.mjs']) {
   assert.ok(pkg.files.some((g) => g === required || required.startsWith(g + '/')), 'not published: ' + required);
 }
 assert.equal(pkg.dsh.bundle.patch, './cordis.patch.yml');
