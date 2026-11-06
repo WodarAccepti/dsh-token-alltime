@@ -121,7 +121,24 @@ await wait(320);
 assert.ok(!main.panel.classList.contains('open'), 'Escape closes the panel');
 assert.equal(main.dock.dataset.show, '0', 'Escape settles the pill back to the arrow');
 
-// 2) A payload with the optional blocks missing keeps painting the total: a
+// 2) An open panel closes itself once the pointer has been away for 1 s, and
+//    hovering the panel holds it open however long that takes.
+main.dock.emit('pointerenter');
+main.tab.emit('click');
+assert.ok(main.panel.classList.contains('open'), 'the panel reopens for the timeout check');
+main.dock.emit('pointerleave');
+await wait(600);
+main.panel.emit('pointerenter');
+await wait(1500);
+assert.ok(main.panel.classList.contains('open'), 'hovering the panel holds it open past the timeout');
+main.panel.emit('pointerleave');
+await wait(650);
+assert.ok(main.panel.classList.contains('open'), 'the grace period is not shorter than 1 s');
+await wait(700);
+assert.ok(!main.panel.classList.contains('open'), 'leaving the panel for over 1 s closes it');
+assert.equal(main.dock.dataset.show, '0', 'the auto-close settles the pill back to the arrow');
+
+// 3) A payload with the optional blocks missing keeps painting the total: a
 //    version skew must not blank the panel, let alone throw out of the shell.
 const skew = { imported: true, total: 1234567, history: 1234567, calls: 3, costCny: 0.5, range: null, today: null, models: undefined, days: undefined };
 const partial = mount(makeEnv(), async () => ({ ok: true, json: async () => skew }));
@@ -131,13 +148,13 @@ partial.tab.emit('click');
 assert.ok(partial.panel.classList.contains('open'), 'the panel opens on a thin payload');
 assert.ok(partial.panel.find('big')[0], 'the panel still renders its headline number');
 
-// 3) A failing host paints an error state instead of rejecting.
+// 4) A failing host paints an error state instead of rejecting.
 const failing = mount(makeEnv(), async () => { throw new Error('boom'); });
 await wait(40);
 assert.equal(failing.shadow.find('val')[0].textContent, '—', 'a failed fetch shows a dash');
 assert.equal(failing.shadow.find('sub')[0].textContent, '读取失败', 'a failed fetch says so');
 
-// 4) Mounting without a document body is a no-op, not a throw.
+// 5) Mounting without a document body is a no-op, not a throw.
 const bodyless = makeEnv({ withBody: false });
 const headless = mount(bodyless, async () => ({ ok: true, json: async () => FIXTURE }));
 assert.equal(headless.shadow, null, 'nothing is mounted without a body');
